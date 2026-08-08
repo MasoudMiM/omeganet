@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omagent"
+version = "0.1.0"
+description = "LLM-assisted OpenModelica modeling: a tested agentic generate-compile-simulate-verify loop with structured omc diagnostics, quantitative trajectory verification, and a benchmark task ladder."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Masoud Masoumi" }]
+keywords = ["modelica", "openmodelica", "llm", "simulation", "agent", "modeling"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = []
+
+[project.optional-dependencies]
+omc = ["OMPython>=3.6"]
+results = ["scipy>=1.10"]
+llm = ["anthropic>=0.40"]
+dev = ["pytest>=8"]
+all = ["OMPython>=3.6", "scipy>=1.10", "anthropic>=0.40", "pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/MasoudMiM/omeganet"
+Issues = "https://github.com/MasoudMiM/omeganet/issues"
+
+[tool.setuptools.packages.find]
+include = ["omagent*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires a live OpenModelica (omc) installation",
+]

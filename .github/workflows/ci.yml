@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (no omc required)
+        run: pip install -e ".[results,dev]"
+      - name: Unit tests
+        run: pytest -m "not integration" -q
+
+  integration:
+    # Full stack against a real OpenModelica compiler
+    runs-on: ubuntu-latest
+    container: openmodelica/openmodelica:v1.26.1-minimal
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python deps
+        run: |
+          apt-get update && apt-get install -y python3-pip python3-venv
+          python3 -m venv /venv && . /venv/bin/activate
+          pip install -e ".[omc,results,dev]"
+      - name: Install MSL for omc
+        run: |
+          echo 'installPackage(Modelica); getErrorString();' > /tmp/i.mos
+          omc /tmp/i.mos
+      - name: Integration tests
+        run: . /venv/bin/activate && pytest -m integration -v
