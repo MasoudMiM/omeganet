@@ -32,8 +32,9 @@ Key capabilities:
   transcript capture, in the format the OpenModelica benchmark discussion
   ([OpenModelica#15385](https://github.com/OpenModelica/OpenModelica/issues/15385))
   calls for
-- **LLM-backend-agnostic** — the loop depends on a one-method protocol; an
-  Anthropic adapter ships, any provider or local model plugs in
+- **LLM-backend-agnostic** — the loop depends on a one-method protocol;
+  adapters ship for Anthropic and for any OpenAI-compatible endpoint
+  (Ollama, LM Studio, llama.cpp, vLLM — local open-weight models included)
 - **Tested** — 83 unit tests run without OpenModelica installed; 4
   integration tests validate against a live omc
 
@@ -98,7 +99,16 @@ for a in result.attempts:
     print(a.n, a.stage, a.complaint)
 ```
 
-Bring your own LLM by implementing one method:
+**Local / open-weight models** work through any OpenAI-compatible server
+(Ollama, LM Studio, llama.cpp server, vLLM) with no extra dependencies:
+
+```python
+from omagent.llm import OpenAICompatLLM
+llm = OpenAICompatLLM(model="qwen2.5-coder:14b")            # Ollama default URL
+# llm = OpenAICompatLLM(model="...", base_url="http://localhost:1234/v1")  # LM Studio
+```
+
+Or bring your own LLM by implementing one method:
 
 ```python
 class MyLLM:

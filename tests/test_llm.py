@@ -80,3 +80,55 @@ def test_transcript_records_rounds():
 def test_missing_anthropic_dependency_message():
     with pytest.raises(ImportError, match=r"omagent\[llm\]"):
         ClaudeLLM(client=None, _force_import_error=True)
+
+
+class TestOpenAICompatLLM:
+    """Adapter for OpenAI-compatible endpoints (Ollama, LM Studio, vLLM...)."""
+
+    def _make(self, replies, **kw):
+        from omagent.llm import OpenAICompatLLM
+        calls = []
+
+        def transport(url, payload, headers):
+            calls.append({"url": url, "payload": payload, "headers": headers})
+            return {"choices": [{"message": {"content": replies.pop(0)}}]}
+
+        llm = OpenAICompatLLM(model="qwen2.5-coder", transport=transport, **kw)
+        return llm, calls
+
+    def test_fresh_and_fix_prompts_shared_with_claude(self):
+        llm, calls = self._make(["model M end M;", "model M end M;"])
+        llm.propose("integrator", None, None)
+        llm.propose("integrator", "bad code", "[error] boom")
+        from omagent.llm import SYSTEM_PROMPT
+        p0, p1 = calls[0]["payload"], calls[1]["payload"]
+        assert p0["messages"][0] == {"role": "system", "content": SYSTEM_PROMPT}
+        assert "integrator" in p0["messages"][1]["content"]
+        assert "bad code" in p1["messages"][1]["content"]
+        assert "[error] boom" in p1["messages"][1]["content"]
+        assert p0["model"] == "qwen2.5-coder"
+
+    def test_default_base_url_is_ollama(self):
+        llm, calls = self._make(["x"])
+        llm.propose("t", None, None)
+        assert calls[0]["url"].startswith("http://localhost:11434/v1")
+        assert calls[0]["url"].endswith("/chat/completions")
+
+    def test_api_key_header_only_when_given(self):
+        llm, calls = self._make(["x"])
+        llm.propose("t", None, None)
+        assert "Authorization" not in calls[0]["headers"]
+        llm2, calls2 = self._make(["x"], api_key="sk-local")
+        llm2.propose("t", None, None)
+        assert calls2[0]["headers"]["Authorization"] == "Bearer sk-local"
+
+    def test_transcript_recorded(self):
+        llm, _ = self._make(["one"])
+        llm.propose("t", None, None)
+        assert llm.transcript[0]["response"] == "one"
+
+    def test_malformed_response_raises_clearly(self):
+        from omagent.llm import OpenAICompatLLM
+        llm = OpenAICompatLLM(model="m", transport=lambda u, p, h: {"error": "nope"})
+        with pytest.raises(RuntimeError, match="unexpected response"):
+            llm.propose("t", None, None)

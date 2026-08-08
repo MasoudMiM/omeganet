@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- New `OpenAICompatLLM` adapter: drive the loop with any OpenAI-compatible
+  chat endpoint — local model servers (Ollama, LM Studio, llama.cpp, vLLM)
+  or hosted services — using only the standard library
+- `ClaudeLLM` and `OpenAICompatLLM` now share identical prompt construction
+
 ## 0.1.0 — first public release
 
 Initial release of omagent, an LLM-assisted modeling toolkit for
