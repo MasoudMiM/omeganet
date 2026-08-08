@@ -22,19 +22,38 @@ jobs:
         run: pytest -m "not integration" -q
 
   integration:
-    # Full stack against a real OpenModelica compiler
+    # Full stack against a real OpenModelica compiler.
+    # omc refuses to run its ZMQ server as root, and container jobs run as
+    # root by default — so everything omc-related runs as a dedicated user,
+    # whose $HOME also receives the MSL from installPackage.
     runs-on: ubuntu-latest
     container: openmodelica/openmodelica:v1.26.1-minimal
     steps:
       - uses: actions/checkout@v4
-      - name: Install Python deps
+
+      - name: System deps + non-root user
         run: |
           apt-get update && apt-get install -y python3-pip python3-venv
-          python3 -m venv /venv && . /venv/bin/activate
-          pip install -e ".[omc,results,dev]"
-      - name: Install MSL for omc
+          useradd -m omuser
+          chown -R omuser: "$PWD"
+
+      - name: Python deps (as omuser)
         run: |
-          echo 'installPackage(Modelica); getErrorString();' > /tmp/i.mos
-          omc /tmp/i.mos
-      - name: Integration tests
-        run: . /venv/bin/activate && pytest -m integration -v
+          su omuser -c "export HOME=/home/omuser && \
+            python3 -m venv /home/omuser/venv && \
+            . /home/omuser/venv/bin/activate && \
+            pip install --upgrade pip -q && \
+            pip install '.[omc,results,dev]'"
+
+      - name: Install MSL for omc (as omuser)
+        run: |
+          su omuser -c "export HOME=/home/omuser && \
+            echo 'installPackage(Modelica); getErrorString();' > /tmp/i.mos && \
+            omc /tmp/i.mos"
+
+      - name: Integration tests (as omuser)
+        run: |
+          WS="$PWD"
+          su omuser -c "export HOME=/home/omuser && cd '$WS' && \
+            . /home/omuser/venv/bin/activate && \
+            pytest -m integration -v"
